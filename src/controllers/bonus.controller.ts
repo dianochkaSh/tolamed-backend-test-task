@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 
 import { bonusQueue } from '../queue';
 import { spendBonus } from '../services/bonus.service';
+import {generateJobId} from "../helpers/helpers";
 
 type AppError = Error & { status?: number };
 
@@ -23,10 +24,13 @@ export async function spendUserBonus(
       throw createAppError('amount must be a positive integer', 400);
     }
 
-    await spendBonus(req.params.id, amount);
 
-    res.json({ success: true });
+    const idempotencyKey = req.headers['Idempotency-Key'] ??  req.body.requestId;
+
+    const result = await spendBonus(req.params.id, amount, idempotencyKey);
+    res.json(result);
   } catch (error) {
+
     next(error);
   }
 }
@@ -37,7 +41,9 @@ export async function enqueueExpireAccrualsJob(
   next: NextFunction,
 ): Promise<void> {
   try {
+    const jobId = generateJobId(_req.body?.userId);
     await bonusQueue.add('expireAccruals', {
+      jobId: jobId,
       createdAt: new Date().toISOString(),
     });
 

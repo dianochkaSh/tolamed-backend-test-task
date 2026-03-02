@@ -1,6 +1,8 @@
 import { Queue, Worker } from 'bullmq';
 
 import { redis } from './redis';
+import { retry } from 'ts-retry-promise';
+import { getBonusWithExpiredDateAndCheckIt } from "./services/bonus.service";
 
 const queueConnection = redis.duplicate();
 
@@ -19,7 +21,11 @@ export function startExpireAccrualsWorker(): Worker {
     'bonusQueue',
     async (job) => {
       if (job.name === 'expireAccruals') {
-        console.log(`[worker] expireAccruals started, jobId=${job.id}`);
+        console.log(`[worker] expireAccruals started, jobId=${job.data.jobId}`);
+        await retry(() => getBonusWithExpiredDateAndCheckIt(), {
+          retries: 3,
+          delay: 1000,
+        })
       }
     },
     {

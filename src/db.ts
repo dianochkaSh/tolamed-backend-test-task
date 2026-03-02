@@ -28,3 +28,5 @@ BonusTransaction.belongsTo(User, {
   foreignKey: 'user_id',
   as: 'user',
 });
+
+module.exports = { sequelize };
